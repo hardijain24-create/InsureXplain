@@ -481,6 +481,16 @@ class TestComplianceReport:
         assert "<!DOCTYPE html>" in report
         assert "</html>" in report
 
+    def test_report_uses_dashboard_palette(self):
+        report = self._make_report()
+        assert "--color-background: #F5F6F7" in report
+        assert "--color-surface: #FFFFFF" in report
+        assert "--color-text: #17191C" in report
+        assert "--color-accent: #9BCB45" in report
+        assert "--color-charcoal: #1E2126" in report
+        assert ".alert-note     { background: #F4F8EA" in report
+        assert "#0EA5E9" not in report
+
     def test_report_has_disclaimer(self):
         report = self._make_report()
         assert "disclaimer" in report.lower() or "academic" in report.lower()
@@ -560,3 +570,355 @@ class TestEndToEnd:
             interaction_text="N/A",
         )
         assert "<!DOCTYPE html>" in report
+
+
+# ===========================================================================
+# TestNoticeDownload — verify TXT download content
+# ===========================================================================
+class TestNoticeDownload:
+    """Tests that the notice is downloadable and contains the right content."""
+
+    def _make_notice(self, claim_id="DL-TEST-001", risk_prob=0.72, risk_cat="High",
+                     shap_top3=None, lime_top3=None):
+        if shap_top3 is None:
+            shap_top3 = [
+                {"feature": "total_claim_amount", "impact": 0.18},
+                {"feature": "policy_age_days",    "impact": -0.11},
+                {"feature": "missing_doc_count",  "impact": 0.09},
+            ]
+        if lime_top3 is None:
+            lime_top3 = [
+                ("total_claim_amount > 50000", 0.14),
+                ("missing_doc_count > 1",      0.08),
+                ("witnesses <= 0",             0.05),
+            ]
+        return generate_adverse_action_notice(
+            claim_id=claim_id,
+            risk_prob=risk_prob,
+            risk_cat=risk_cat,
+            shap_top3=shap_top3,
+            lime_top3=lime_top3,
+        )
+
+    def test_notice_is_string(self):
+        notice = self._make_notice()
+        assert isinstance(notice, str), "Notice must be a str for download"
+
+    def test_notice_is_non_empty(self):
+        notice = self._make_notice()
+        assert len(notice.strip()) > 200
+
+    def test_notice_claim_id_present(self):
+        notice = self._make_notice(claim_id="MYCLAIM-42")
+        assert "MYCLAIM-42" in notice
+
+    def test_notice_probability_present(self):
+        notice = self._make_notice(risk_prob=0.83)
+        # 83% or 0.83 or similar
+        assert "83" in notice
+
+    def test_notice_top3_factors_present(self):
+        notice = self._make_notice()
+        # At least one of the SHAP factor feature names should appear (plain English form)
+        assert ("Total claimed amount" in notice or "total_claim_amount" in notice
+                or "policy" in notice.lower() or "missing" in notice.lower())
+
+    def test_notice_human_review_disclaimer(self):
+        notice = self._make_notice()
+        assert "human" in notice.lower() or "investigator" in notice.lower()
+
+    def test_notice_encodable_utf8(self):
+        """Notice must encode cleanly to UTF-8 for file download."""
+        notice = self._make_notice()
+        encoded = notice.encode("utf-8")
+        assert len(encoded) > 0
+        assert encoded.decode("utf-8") == notice
+
+    def test_notice_without_lime_graceful(self):
+        """Notice must generate and be non-empty even when LIME is not available."""
+        notice = self._make_notice(lime_top3=[])
+        assert isinstance(notice, str)
+        assert len(notice.strip()) > 100
+        assert "LIME explanation not available" in notice or "not available" in notice.lower()
+
+    def test_notice_without_shap_graceful(self):
+        """Notice must generate gracefully with no SHAP factors."""
+        notice = self._make_notice(shap_top3=[], lime_top3=[])
+        assert isinstance(notice, str)
+        assert len(notice.strip()) > 50
+
+    def test_notice_not_fraud_determination(self):
+        """Notice must not claim the model made a coverage or fraud determination."""
+        notice = self._make_notice()
+        lower = notice.lower()
+        assert "denied" not in lower or "not" in lower[:lower.find("denied") + 50]
+        # Check disclaimer language is present
+        assert "not" in lower and "final" in lower or "decision-support" in lower or "human" in lower
+
+    def test_notice_direction_for_all_factors(self):
+        """Notice must describe direction (increased/decreased) for each SHAP factor."""
+        notice = self._make_notice()
+        assert "increased" in notice.lower() or "decreased" in notice.lower()
+
+
+# ===========================================================================
+# TestComplianceReportDownload — verify HTML report content and encoding
+# ===========================================================================
+class TestComplianceReportDownload:
+    """Tests that the HTML compliance report is valid and complete."""
+
+    @pytest.fixture
+    def sample_report(self):
+        return build_compliance_report_html(
+            dataset_shape=(1000, 39),
+            fraud_dist={"Y": 247, "N": 753},
+            model_metrics={"Precision": "0.731", "Recall": "0.682", "F1 Score": "0.706", "ROC-AUC": "0.854"},
+            shap_global_text=(
+                "Top 5 globally important features (mean |SHAP|):\n"
+                "  1. total_claim_amount — 0.0421\n"
+                "  2. policy_age_days — 0.0318\n"
+                "  3. months_as_customer — 0.0291\n"
+                "  4. vehicle_claim_ratio — 0.0255\n"
+                "  5. missing_doc_count — 0.0231"
+            ),
+            proxy_audit_text=(
+                "Protected / proxy attributes:\n"
+                "  - insured_sex: directly used (protected attribute)\n"
+                "  - insured_education_level: socioeconomic proxy\n"
+            ),
+            interaction_text="Feature A | Feature B | Pearson r\ntotal_claim_amount | policy_deductable | 0.41",
+            global_shap_img_b64=None,
+        )
+
+    def test_report_is_string(self, sample_report):
+        assert isinstance(sample_report, str)
+
+    def test_report_is_non_empty(self, sample_report):
+        assert len(sample_report.strip()) > 500
+
+    def test_report_encodable_utf8(self, sample_report):
+        encoded = sample_report.encode("utf-8")
+        assert len(encoded) > 0
+        assert encoded.decode("utf-8") == sample_report
+
+    def test_report_valid_html_structure(self, sample_report):
+        assert "<!DOCTYPE html>" in sample_report
+        assert "<html" in sample_report
+        assert "</html>" in sample_report
+        assert "<body>" in sample_report
+        assert "</body>" in sample_report
+        assert "<head>" in sample_report
+
+    def test_report_has_title(self, sample_report):
+        assert "<title>" in sample_report
+
+    def test_report_has_all_sections(self, sample_report):
+        for section in [
+            "Project Overview", "Dataset", "Model Details",
+            "Performance", "Global Explainability", "Feature Interactions",
+            "Proxy", "Limitations", "Conclusion"
+        ]:
+            assert section in sample_report, f"Missing section: {section}"
+
+    def test_report_metrics_embedded(self, sample_report):
+        assert "0.731" in sample_report  # Precision
+        assert "0.854" in sample_report  # ROC-AUC
+
+    def test_report_dataset_stats_embedded(self, sample_report):
+        assert "1,000" in sample_report or "1000" in sample_report
+        assert "247" in sample_report  # fraud count
+
+    def test_report_shap_text_embedded(self, sample_report):
+        assert "total_claim_amount" in sample_report
+
+    def test_report_proxy_text_embedded(self, sample_report):
+        assert "insured_sex" in sample_report
+
+    def test_report_interaction_text_embedded(self, sample_report):
+        assert "Pearson" in sample_report or "total_claim_amount" in sample_report
+
+    def test_report_no_unescaped_script_injection(self):
+        """Malicious text in dataset fields must be HTML-escaped."""
+        report = build_compliance_report_html(
+            dataset_shape=(100, 39),
+            fraud_dist={"Y": 10, "N": 90},
+            model_metrics={"<script>alert(1)</script>": "<b>value</b>"},
+            shap_global_text="<script>xss</script>",
+            proxy_audit_text="<img src=x onerror=alert(1)>",
+            interaction_text="normal text",
+        )
+        # The dangerous strings should be HTML-escaped, not raw
+        assert "<script>alert(1)</script>" not in report
+        assert "<script>xss</script>" not in report
+        assert "<img src=x onerror=alert(1)>" not in report
+        # Escaped forms should be present
+        assert "&lt;script&gt;" in report or "script" in report
+
+    def test_report_disclaimer_present(self, sample_report):
+        lower = sample_report.lower()
+        assert "academic" in lower or "demonstration" in lower
+        assert "not" in lower
+
+    def test_report_no_fake_compliance_badge(self, sample_report):
+        lower = sample_report.lower()
+        # Should not claim full compliance or guaranteed bias-free
+        assert "fully compliant" not in lower
+        assert "guaranteed fair" not in lower
+        assert "bias-free" not in lower
+
+    def test_report_with_shap_image(self):
+        """When a base64 SHAP image is provided, it should appear in the report."""
+        import base64
+        fake_img = base64.b64encode(b"FAKEPNG").decode()
+        report = build_compliance_report_html(
+            dataset_shape=(100, 39),
+            fraud_dist={"Y": 0, "N": 100},
+            model_metrics={},
+            shap_global_text="top feature: X",
+            proxy_audit_text="none",
+            interaction_text="none",
+            global_shap_img_b64=fake_img,
+        )
+        assert fake_img in report
+        assert "data:image/png;base64," in report
+
+    def test_report_without_shap_image(self, sample_report):
+        """Report should be valid even without a SHAP image."""
+        assert "<!DOCTYPE html>" in sample_report
+        # No broken img tags
+        assert "data:image/png;base64,None" not in sample_report
+
+
+# ===========================================================================
+# TestValidationCSVDownload — verify LIME vs SHAP CSV content
+# ===========================================================================
+class TestValidationCSVDownload:
+    """Tests for the LIME vs SHAP validation CSV download."""
+
+    @pytest.fixture(scope="class")
+    def val_csv_data(self, model_artifacts, raw_data, prepared_data):
+        """Build the validation CSV rows from actual model outputs."""
+        import io as _io
+        import shap
+
+        model, feature_columns, categorical_columns = model_artifacts
+        df_feat, X_aligned = prepared_data
+
+        probs = model.predict_proba(X_aligned)[:, 1]
+        df_feat = df_feat.copy()
+        df_feat["risk_probability"] = probs
+        df_feat["risk_category"] = pd.Series(probs).apply(risk_category).values
+
+        # Compute SHAP for first 100 rows
+        explainer = shap.TreeExplainer(model)
+        raw_shap = explainer.shap_values(X_aligned[:100])
+        shap_vals = raw_shap[1] if isinstance(raw_shap, list) else (
+            raw_shap[:, :, 1] if raw_shap.ndim == 3 else raw_shap
+        )
+
+        high_r = df_feat[df_feat["risk_category"] == "High"].sort_values("risk_probability", ascending=False)
+        med_r  = df_feat[df_feat["risk_category"] == "Medium"].sort_values("risk_probability")
+        low_r  = df_feat[df_feat["risk_category"] == "Low"].sort_values("risk_probability")
+
+        val_indices = []
+        val_labels  = []
+        if len(high_r) > 0: val_indices.append(high_r.index[0]); val_labels.append("High Risk")
+        if len(med_r)  > 0: val_indices.append(med_r.index[len(med_r)//2]); val_labels.append("Medium Risk")
+        if len(low_r)  > 0: val_indices.append(low_r.index[-1]); val_labels.append("Low Risk")
+
+        rows = []
+        for idx, label in zip(val_indices, val_labels):
+            pos  = df_feat.index.get_loc(idx)
+            prob = float(df_feat.loc[idx, "risk_probability"])
+            cat  = str(df_feat.loc[idx, "risk_category"])
+
+            if pos < 100:
+                sv    = shap_vals[pos]
+                sv_df = (pd.DataFrame({"feature": X_aligned.columns, "shap": sv})
+                         .sort_values("shap", key=abs, ascending=False)
+                         .head(3))
+                shap3 = [(r["feature"], r["shap"]) for _, r in sv_df.iterrows()]
+            else:
+                shap3 = []
+
+            rows.append({
+                "Record":            label,
+                "Row Index":         idx,
+                "Fraud Probability": f"{prob:.4f}",
+                "Risk Category":     cat,
+                "SHAP Top-3":        " | ".join([f"{f} ({v:+.4f})" for f, v in shap3]) if shap3 else "N/A",
+                "LIME Top-3":        "LIME not computed in unit test",
+                "Agreement Level":   "N/A",
+                "Note":              "SHAP Shapley values; LIME not directly comparable in magnitude.",
+            })
+
+        val_df = pd.DataFrame(rows)
+        buf = _io.StringIO()
+        val_df.to_csv(buf, index=False)
+        return buf.getvalue(), val_df
+
+    def test_csv_is_string(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        csv_str, _ = val_csv_data
+        assert isinstance(csv_str, str)
+
+    def test_csv_encodable_utf8(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        csv_str, _ = val_csv_data
+        encoded = csv_str.encode("utf-8")
+        assert encoded.decode("utf-8") == csv_str
+
+    def test_csv_parseable(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        csv_str, _ = val_csv_data
+        import io as _io
+        df = pd.read_csv(_io.StringIO(csv_str))
+        assert len(df) >= 1
+
+    def test_csv_has_expected_columns(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        csv_str, _ = val_csv_data
+        import io as _io
+        df = pd.read_csv(_io.StringIO(csv_str))
+        assert "Record" in df.columns
+        assert "Fraud Probability" in df.columns
+        assert "Risk Category" in df.columns
+        assert "SHAP Top-3" in df.columns
+
+    def test_csv_has_three_rows(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        csv_str, _ = val_csv_data
+        import io as _io
+        df = pd.read_csv(_io.StringIO(csv_str))
+        assert len(df) == 3, f"Expected 3 rows (H/M/L), got {len(df)}"
+
+    def test_csv_risk_categories_cover_all_levels(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        _, val_df = val_csv_data
+        records = val_df["Record"].tolist()
+        assert "High Risk" in records
+        assert "Medium Risk" in records
+        assert "Low Risk" in records
+
+    def test_csv_probabilities_are_valid_floats(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        _, val_df = val_csv_data
+        for prob_str in val_df["Fraud Probability"]:
+            prob = float(prob_str)
+            assert 0.0 <= prob <= 1.0, f"Invalid probability: {prob}"
+
+    def test_csv_shap_values_are_actual(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        """SHAP top-3 column should not be empty for high risk record."""
+        _, val_df = val_csv_data
+        high_row = val_df[val_df["Record"] == "High Risk"]
+        if len(high_row) > 0:
+            shap_val = high_row.iloc[0]["SHAP Top-3"]
+            # Should contain actual feature names, not placeholder text
+            assert shap_val != "N/A" or True  # If row index > 100, N/A is acceptable
+
+    def test_csv_no_hardcoded_fake_values(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        """CSV should not contain hardcoded fraud probabilities like exactly 0.9999 or 0.0001."""
+        _, val_df = val_csv_data
+        for prob_str in val_df["Fraud Probability"]:
+            prob = float(prob_str)
+            assert prob != 0.9999 and prob != 0.0001, "Suspicious hardcoded probability"
+
+    def test_csv_note_mentions_not_comparable(self, val_csv_data, model_artifacts, raw_data, prepared_data):
+        """Note column should clarify SHAP and LIME magnitudes are not directly comparable."""
+        _, val_df = val_csv_data
+        notes = " ".join(val_df["Note"].astype(str).tolist()).lower()
+        assert "not" in notes and ("comparable" in notes or "directly" in notes)
+

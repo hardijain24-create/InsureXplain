@@ -211,13 +211,22 @@ def build_compliance_report_html(
     shap_global_text, proxy_audit_text, interaction_text,
     global_shap_img_b64=None
 ):
-    """Build an HTML compliance report string."""
+    """Build a self-contained HTML compliance report string.
+
+    All user-derived / dataset-derived values are HTML-escaped before insertion.
+    """
+    import html as _html
+
     today = datetime.date.today().strftime("%d %B %Y")
+
+    def esc(v):
+        """Safely escape a value for insertion into HTML."""
+        return _html.escape(str(v))
 
     metrics_rows = ""
     if model_metrics:
         for k, v in model_metrics.items():
-            metrics_rows += f"<tr><td>{k}</td><td><strong>{v}</strong></td></tr>"
+            metrics_rows += f"<tr><td>{esc(k)}</td><td><strong>{esc(v)}</strong></td></tr>"
     else:
         metrics_rows = (
             "<tr><td colspan='2'><em>Upload labeled data (with fraud_reported column) "
@@ -229,75 +238,189 @@ def build_compliance_report_html(
         img_section = f"""
         <h3>Global SHAP Feature Importance Plot</h3>
         <img src="data:image/png;base64,{global_shap_img_b64}"
-             style="max-width:100%;border:1px solid #ddd;border-radius:8px;"
+             style="max-width:100%;border:1px solid #E6E8EB;border-radius:8px;"
              alt="SHAP Summary Plot"/>
         """
 
-    n_fraud = fraud_dist.get('Y', 0)
-    n_total = dataset_shape[0]
-    n_genuine = fraud_dist.get('N', 0)
-    fraud_pct = (n_fraud / n_total * 100) if isinstance(n_fraud, int) and n_total > 0 else 0
+    n_fraud   = fraud_dist.get("Y", 0)
+    n_total   = dataset_shape[0]
+    n_genuine = fraud_dist.get("N", 0)
+    fraud_pct   = (n_fraud   / n_total * 100) if isinstance(n_fraud,   int) and n_total > 0 else 0
     genuine_pct = (n_genuine / n_total * 100) if isinstance(n_genuine, int) and n_total > 0 else 0
 
-    html = f"""<!DOCTYPE html>
+    html_str = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<title>InsureXplain — Regulatory Compliance Report</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>InsureXplain — Compliance Report</title>
 <style>
-  body {{ font-family: 'Segoe UI', Arial, sans-serif; max-width: 900px; margin: 40px auto;
-         color: #1B2A4A; background: #F7F8FC; padding: 0 20px 60px; }}
-  h1 {{ color: #101C36; border-bottom: 3px solid #2E5BFF; padding-bottom: 10px; }}
-  h2 {{ color: #1B2A4A; border-left: 4px solid #2E5BFF; padding-left: 12px; margin-top: 40px; }}
-  h3 {{ color: #2E5BFF; }}
-  table {{ border-collapse: collapse; width: 100%; margin: 16px 0; }}
-  th {{ background: #101C36; color: #fff; padding: 8px 12px; text-align: left; }}
-  td {{ border: 1px solid #D6DCEF; padding: 8px 12px; }}
-  tr:nth-child(even) {{ background: #EFF2FA; }}
-  .warning {{ background: #FFF3DC; border-left: 4px solid #B7791F; padding: 12px 16px;
-              border-radius: 6px; margin: 16px 0; }}
-  .info {{ background: #E7F6EE; border-left: 4px solid #1E8A57; padding: 12px 16px;
-           border-radius: 6px; margin: 16px 0; }}
-  .danger {{ background: #FDECEC; border-left: 4px solid #C13B44; padding: 12px 16px;
-             border-radius: 6px; margin: 16px 0; }}
-  pre {{ background: #101C36; color: #AEB8D6; padding: 16px; border-radius: 8px;
-         overflow-x: auto; font-size: 0.9rem; white-space: pre-wrap; }}
-  footer {{ margin-top: 60px; color: #6B7280; font-size: 0.85rem;
-            border-top: 1px solid #D6DCEF; padding-top: 16px; }}
+  /* ── Design system aligned with InsureXplain dashboard ── */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root {{
+    --color-background: #F5F6F7;
+    --color-surface: #FFFFFF;
+    --color-text: #17191C;
+    --color-accent: #9BCB45;
+    --color-charcoal: #1E2126;
+    --color-secondary-text: #737780;
+    --color-border: #E6E8EB;
+  }}
+  *, *::before, *::after {{ box-sizing: border-box; }}
+  body {{
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    max-width: 920px;
+    margin: 40px auto;
+    color: var(--color-text);
+    background: var(--color-background);
+    padding: 0 24px 80px;
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }}
+  /* Header */
+  .report-header {{
+    background: var(--color-charcoal);
+    color: #FFFFFF;
+    padding: 2rem 2.4rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+  }}
+  .report-header h1 {{
+    font-size: 1.55rem;
+    font-weight: 700;
+    margin: 0 0 0.3rem 0;
+    letter-spacing: -0.01em;
+  }}
+  .report-header .accent {{ color: var(--color-accent); }}
+  .report-header p {{
+    color: #C8CDD4;
+    margin: 0;
+    font-size: 0.87rem;
+  }}
+  /* Section headings */
+  h2 {{
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-text);
+    border-left: 4px solid var(--color-accent);
+    padding-left: 12px;
+    margin-top: 2.4rem;
+    margin-bottom: 0.8rem;
+  }}
+  h3 {{
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-top: 1.4rem;
+  }}
+  /* Cards */
+  .card {{
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.2rem;
+  }}
+  /* Tables */
+  table {{
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.8rem 0 1.2rem;
+    font-size: 0.87rem;
+  }}
+  th {{
+    background: var(--color-charcoal);
+    color: #FFFFFF;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.82rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }}
+  td {{
+    border-bottom: 1px solid var(--color-border);
+    padding: 8px 12px;
+  }}
+  tr:nth-child(even) td {{ background: var(--color-background); }}
+  /* Alert boxes */
+  .alert {{
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.87rem;
+    border-left: 4px solid;
+  }}
+  .alert-warning  {{ background: #FEF3C7; border-color: #FDE68A; color: #92400E; }}
+  .alert-info     {{ background: #ECFDF5; border-color: #A7F3D0; color: #065F46; }}
+  .alert-danger   {{ background: #FEECEC; border-color: #FECACA; color: #B91C1C; }}
+  .alert-note     {{ background: #F4F8EA; border-color: var(--color-accent); color: #46552E; }}
+  .alert strong   {{ font-weight: 700; }}
+  /* Code blocks */
+  pre {{
+    background: var(--color-charcoal);
+    color: var(--color-accent);
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.83rem;
+    white-space: pre-wrap;
+    margin: 0.8rem 0;
+  }}
+  /* Footer */
+  footer {{
+    margin-top: 3rem;
+    color: var(--color-secondary-text);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
+    text-align: center;
+  }}
 </style>
 </head>
 <body>
-<h1>🔍 InsureXplain — Regulatory Compliance Report</h1>
-<p><strong>Generated:</strong> {today} &nbsp;|&nbsp;
-   <strong>Project:</strong> InsureXplain: Interpretable Underwriting Engine &nbsp;|&nbsp;
-   <strong>Course:</strong> Trustworthy and Responsible AI (Micro-Project)</p>
 
-<div class="warning">
-⚠️ <strong>Disclaimer:</strong> This is an academic demonstration report. It does not constitute
-a formal regulatory compliance audit. No insurance decisions should be based on this output.
+<div class="report-header">
+  <h1>Insure<span class="accent">X</span>plain &mdash; Regulatory Compliance Report</h1>
+  <p>Generated: {esc(today)} &nbsp;|&nbsp; Project: InsureXplain: Interpretable Underwriting Engine
+     &nbsp;|&nbsp; Course: Trustworthy and Responsible AI (Micro-Project)</p>
+</div>
+
+<div class="alert alert-warning">
+  <strong>Disclaimer:</strong> This is an academic demonstration report. It does not constitute
+  a formal regulatory compliance audit. No insurance decisions should be based on this output.
+  The model predicts auto-insurance claim fraud risk only &mdash; it is not an underwriting
+  eligibility, coverage-denial, or premium-pricing engine.
 </div>
 
 <h2>1. Project Overview</h2>
-<p><strong>Prediction target:</strong> Binary fraud detection — whether an auto-insurance claim is
-fraudulent (<code>fraud_reported = Y</code>) or genuine (<code>fraud_reported = N</code>).</p>
-<p><strong>Scope:</strong> This model is a <em>decision-support tool</em>. It produces a risk
-probability to assist human investigators; it does not make final fraud determinations and is not
-used for underwriting eligibility, coverage denial, or premium setting.</p>
+<div class="card">
+  <p><strong>Prediction target:</strong> Binary fraud detection &mdash; whether an auto-insurance
+  claim is fraudulent (<code>fraud_reported = Y</code>) or genuine (<code>fraud_reported = N</code>).</p>
+  <p><strong>Scope:</strong> This model is a <em>decision-support tool</em>. It produces a risk
+  probability to assist human investigators; it does not make final fraud determinations and is not
+  used for underwriting eligibility, coverage denial, or premium setting.</p>
+</div>
 
 <h2>2. Dataset Description</h2>
+<div class="card">
 <table>
   <tr><th>Attribute</th><th>Value</th></tr>
   <tr><td>Total records</td><td>{n_total:,}</td></tr>
-  <tr><td>Raw features</td><td>{dataset_shape[1]}</td></tr>
-  <tr><td>Fraudulent claims</td><td>{n_fraud} ({fraud_pct:.1f}%)</td></tr>
-  <tr><td>Genuine claims</td><td>{n_genuine} ({genuine_pct:.1f}%)</td></tr>
+  <tr><td>Raw features</td><td>{esc(dataset_shape[1])}</td></tr>
+  <tr><td>Fraudulent claims (Y)</td><td>{esc(n_fraud)} ({fraud_pct:.1f}%)</td></tr>
+  <tr><td>Genuine claims (N)</td><td>{esc(n_genuine)} ({genuine_pct:.1f}%)</td></tr>
   <tr><td>Source domain</td><td>Auto-insurance claims (synthetic/public dataset)</td></tr>
 </table>
-<p><strong>Dataset limitations:</strong> The dataset is a publicly available synthetic/semi-synthetic
-dataset. It may not reflect real-world fraud patterns. Class imbalance (~25% fraud) exists and is
-handled via <code>class_weight='balanced'</code>.</p>
+</div>
+<div class="alert alert-note">
+  <strong>Dataset limitations:</strong> The dataset is a publicly available synthetic/semi-synthetic
+  dataset. It may not reflect real-world fraud patterns. Class imbalance (~25% fraud) exists and is
+  handled via <code>class_weight='balanced'</code>.
+</div>
 
 <h2>3. Model Details</h2>
+<div class="card">
 <table>
   <tr><th>Parameter</th><th>Value</th></tr>
   <tr><td>Algorithm</td><td>Random Forest Classifier</td></tr>
@@ -307,41 +430,56 @@ handled via <code>class_weight='balanced'</code>.</p>
   <tr><td>Evaluation</td><td>5-fold cross-validation + held-out 20% test set</td></tr>
   <tr><td>Explainability</td><td>SHAP TreeExplainer + LIME LimeTabularExplainer</td></tr>
 </table>
+</div>
 
 <h2>4. Model Performance Metrics</h2>
+<div class="card">
 <table>
   <tr><th>Metric</th><th>Value</th></tr>
   {metrics_rows}
 </table>
 <p><em>Note: Accuracy is not the primary metric due to class imbalance. Precision, Recall, F1,
-and ROC-AUC are reported instead.</em></p>
+and ROC-AUC are reported instead. Threshold = 0.5.</em></p>
+</div>
 
 <h2>5. Global Explainability (SHAP)</h2>
+<div class="card">
 {img_section}
-<pre>{shap_global_text}</pre>
+<pre>{esc(shap_global_text)}</pre>
+</div>
+<div class="alert alert-note">
+  <strong>Important:</strong> Global SHAP importance shows which features most consistently
+  influence the model's output across the dataset. High importance does not imply causation.
+  These are statistical associations in historical data.
+</div>
 
 <h2>6. Feature Interactions</h2>
-<pre>{interaction_text}</pre>
-<div class="info">
-ℹ️ <strong>Important:</strong> Feature associations shown here are statistical correlations,
-not causal relationships. A feature correlated with fraud in historical data does not necessarily
-cause fraud. Causal inference would require domain expertise and controlled study designs.
+<div class="card">
+<pre>{esc(interaction_text)}</pre>
+</div>
+<div class="alert alert-note">
+  <strong>Important:</strong> Feature associations shown here are statistical correlations,
+  not causal relationships. A feature correlated with fraud in historical data does not
+  necessarily cause fraud. Causal inference would require domain expertise and controlled study designs.
 </div>
 
 <h2>7. Proxy &amp; Fairness Audit</h2>
-<pre>{proxy_audit_text}</pre>
-<div class="warning">
-⚠️ <strong>Proxy Discrimination Risk:</strong> Even if protected attributes are excluded from the
-model, correlated features may act as proxies. The findings above identify potential proxies that
-should be reviewed by domain experts and legal counsel before any deployment.
+<div class="card">
+<pre>{esc(proxy_audit_text)}</pre>
 </div>
-<div class="danger">
-🚫 <strong>Limitation:</strong> This dataset does not contain ground-truth demographic group labels
-sufficient for a full group fairness analysis (e.g. demographic parity, equalised odds).
-Additional data collection and domain expert review is required before any real-world deployment.
+<div class="alert alert-warning">
+  <strong>Proxy Discrimination Risk:</strong> Even if protected attributes are excluded from the
+  model, correlated features may act as proxies. The findings above identify potential proxies that
+  should be reviewed by domain experts and legal counsel before any deployment.
+</div>
+<div class="alert alert-danger">
+  <strong>Limitation:</strong> This dataset does not contain ground-truth demographic group labels
+  sufficient for a full group fairness analysis (e.g. demographic parity, equalised odds).
+  Additional data collection and domain expert review is required before any real-world deployment.
 </div>
 
 <h2>8. Limitations and Recommended Safeguards</h2>
+<div class="card">
 <ul>
   <li>Human review is required before any adverse action is taken based on model output.</li>
   <li>The model should be retrained periodically on fresh data to avoid concept drift.</li>
@@ -350,19 +488,27 @@ Additional data collection and domain expert review is required before any real-
   <li>Consider differential privacy or federated learning if real PII is ever used.</li>
   <li>Implement model monitoring in production to detect distribution shift.</li>
   <li>Conduct periodic third-party audits of model fairness and accuracy.</li>
+  <li>The model uses <code>insured_sex</code> directly &mdash; legal review required before deployment.</li>
+  <li>Race, ethnicity and national origin data are absent &mdash; full group fairness cannot be assessed.</li>
 </ul>
+</div>
 
 <h2>9. Conclusion</h2>
-<p>The InsureXplain prototype demonstrates interpretable, responsible AI applied to insurance fraud
-detection. SHAP and LIME provide complementary local and global explanations. The proxy audit
-identifies features warranting further legal review. The model's outputs are decision-support
-signals only and should always be combined with human judgment.</p>
+<div class="card">
+  <p>The InsureXplain prototype demonstrates interpretable, responsible AI applied to insurance
+  fraud risk detection. SHAP and LIME provide complementary local and global explanations.
+  The proxy audit identifies features warranting further legal review. The model's outputs are
+  decision-support signals only and should always be combined with human judgement.</p>
+  <p>This report covers only what can be assessed from the available data. Claims of full
+  regulatory compliance or assurance of fairness are explicitly not made.</p>
+</div>
 
 <footer>
-  InsureXplain — College Micro-Project &nbsp;|&nbsp; Trustworthy and Responsible AI &nbsp;|&nbsp;
-  Generated {today} &nbsp;|&nbsp;
-  ⚠️ Academic use only — not for production deployment.
+  InsureXplain &mdash; College Micro-Project &nbsp;|&nbsp; Trustworthy and Responsible AI
+  &nbsp;|&nbsp; Generated {esc(today)}
+  &nbsp;|&nbsp; Academic use only &mdash; not for production deployment.
 </footer>
 </body>
 </html>"""
-    return html
+    return html_str
+

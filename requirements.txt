@@ -11,3 +11,4 @@ ipykernel
 requests
 lime
 fpdf2
+plotly
