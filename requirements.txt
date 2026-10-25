@@ -9,3 +9,5 @@ streamlit
 jupyter
 ipykernel
 requests
+lime
+fpdf2
