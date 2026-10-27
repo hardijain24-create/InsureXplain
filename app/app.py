@@ -663,9 +663,9 @@ if active_section == "Overview":
     with col_left:
         st.markdown('<div class="ix-card">', unsafe_allow_html=True)
         st.markdown('<div class="ix-card-title">Fraud Risk Distribution</div>', unsafe_allow_html=True)
-        bins = pd.cut(df_feat["risk_probability"], bins=20)
-        hist_data = df_feat.groupby(bins, observed=True)["risk_probability"].count().reset_index()
-        hist_data.columns = ["bin", "count"]
+        bin_series = pd.cut(df_feat["risk_probability"], bins=20)
+        hist_counts = bin_series.value_counts(sort=False)
+        hist_data = pd.DataFrame({"bin": hist_counts.index, "count": hist_counts.values})
         hist_data["bin_mid"] = hist_data["bin"].apply(lambda x: x.mid)
         fig_dist = go.Figure()
         colors_hist = [
