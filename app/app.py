@@ -54,83 +54,232 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
 
-/* ---------- App shell ---------- */
-.stApp { background: #F5F6F7; }
-.block-container { padding: 1.6rem 2rem 3rem 2rem !important; max-width: 1280px; }
+/* ---------- App shell (Enforce light workspace & high contrast) ---------- */
+.stApp {
+    background-color: #F5F6F7 !important;
+    color: #17191C !important;
+}
+.block-container {
+    padding: 1.6rem 2rem 3rem 2rem !important;
+    max-width: 1280px;
+}
+
+/* Force dark, crisp typography across all standard Streamlit elements in main content */
+.stApp p,
+.stApp [data-testid="stMarkdownContainer"] p,
+.stApp [data-testid="stMarkdownContainer"] span,
+.stApp [data-testid="stMarkdownContainer"] li,
+.stApp [data-testid="stMarkdownContainer"] strong,
+.stApp [data-testid="stText"] {
+    color: #17191C !important;
+}
+
+.stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
+    color: #17191C !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em;
+}
+
+/* Captions and muted text */
+.stApp small,
+.stApp [data-testid="stCaptionContainer"] p,
+.stApp .caption {
+    color: #555A64 !important;
+}
+
+/* ---------- Form Controls, Selects, Dropdowns ---------- */
+label[data-testid="stWidgetLabel"] p {
+    color: #17191C !important;
+    font-weight: 600 !important;
+    font-size: 0.88rem !important;
+}
+div[data-baseweb="select"] {
+    background-color: #FFFFFF !important;
+    border-radius: 8px !important;
+}
+div[data-baseweb="select"] * {
+    color: #17191C !important;
+}
+div[data-baseweb="popover"],
+div[data-baseweb="popover"] > div,
+div[data-baseweb="menu"],
+ul[role="listbox"] {
+    background-color: #FFFFFF !important;
+}
+li[role="option"] {
+    color: #17191C !important;
+    background-color: #FFFFFF !important;
+}
+li[role="option"]:hover,
+li[role="option"][aria-selected="true"] {
+    background-color: #EBF3D8 !important;
+    color: #17191C !important;
+}
+div[data-baseweb="tag"] {
+    background-color: #E6E8EB !important;
+}
+div[data-baseweb="tag"] span {
+    color: #17191C !important;
+}
+
+/* ---------- Expanders ---------- */
+div[data-testid="stExpander"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid #E6E8EB !important;
+    border-radius: 8px !important;
+    margin-bottom: 0.8rem !important;
+}
+div[data-testid="stExpander"] summary {
+    background-color: #FFFFFF !important;
+}
+div[data-testid="stExpander"] summary p,
+div[data-testid="stExpander"] summary span {
+    color: #17191C !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+}
+div[data-testid="stExpanderDetails"] * {
+    color: #17191C !important;
+}
+
+/* ---------- Streamlit Alerts / Info / Warnings ---------- */
+div[data-testid="stAlert"] {
+    border-radius: 8px !important;
+}
+div[data-testid="stAlert"] * {
+    color: #17191C !important;
+}
 
 /* ---------- Sidebar ---------- */
 section[data-testid="stSidebar"] {
-    background: #1E2126 !important;
-    border-right: 1px solid #2A2D31;
+    background-color: #1E2126 !important;
+    border-right: 1px solid #2A2D31 !important;
 }
-section[data-testid="stSidebar"] > div { padding: 1.5rem 1rem; }
-section[data-testid="stSidebar"] * { color: #C8CDD4 !important; }
-section[data-testid="stSidebar"] .stMarkdown hr { border-color: #2A2D31 !important; }
+section[data-testid="stSidebar"] > div {
+    padding: 1.5rem 1rem !important;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: #2E333B !important;
+    margin: 1.2rem 0 !important;
+}
+
+/* Sidebar navigation section header */
+section[data-testid="stSidebar"] .ix-nav-section {
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: #8C929D !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    padding: 0.8rem 0.5rem 0.3rem 0.5rem !important;
+    display: block !important;
+}
+
+/* Sidebar radio button list items */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] > label {
+    display: none !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
+    gap: 3px !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] > label {
+    background-color: transparent !important;
+    padding: 0.45rem 0.75rem !important;
+    border-radius: 6px !important;
+    margin: 0 !important;
+    cursor: pointer !important;
+    border: 1px solid transparent !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] > label:hover {
+    background-color: #272B32 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] > label[data-checked="true"] {
+    background-color: #272B32 !important;
+    border-left: 3px solid #9BCB45 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] [data-testid="stMarkdownContainer"] p {
+    color: #D6DAE1 !important;
+    font-size: 0.88rem !important;
+    font-weight: 500 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] > label[data-checked="true"] [data-testid="stMarkdownContainer"] p {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}
 
 /* File uploader in sidebar */
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
-    background: #1E2126 !important;
+    background-color: #17191C !important;
     border: 1.5px dashed #3A3D44 !important;
-    border-radius: 8px;
+    border-radius: 8px !important;
 }
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * {
-    color: #C8CDD4 !important;
+    color: #D6DAE1 !important;
 }
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {
-    background: #2A2D31 !important;
-    border: 1px solid #3A3D44 !important;
-    color: #E6E9F5 !important;
+    background-color: #2A2D31 !important;
+    border: 1px solid #444852 !important;
+    color: #FFFFFF !important;
 }
-section[data-testid="stSidebar"] small { color: #737780 !important; }
 section[data-testid="stSidebar"] [data-testid="stFileUploaderFile"],
 section[data-testid="stSidebar"] [data-testid="stFileUploaderFile"] * {
-    background: #1E2126 !important;
-    color: #C8CDD4 !important;
+    background-color: #17191C !important;
+    color: #D6DAE1 !important;
 }
 
 /* ---------- Section heading system ---------- */
 .ix-page-header {
-    padding: 1.4rem 0 1rem 0;
+    padding: 1.2rem 0 1rem 0;
     border-bottom: 2px solid #E6E8EB;
     margin-bottom: 1.4rem;
 }
 .ix-page-title {
     font-size: 1.45rem;
     font-weight: 700;
-    color: #17191C;
+    color: #17191C !important;
     margin: 0 0 0.25rem 0;
     letter-spacing: -0.01em;
 }
 .ix-page-subtitle {
     font-size: 0.88rem;
-    color: #737780;
+    color: #555A64 !important;
     margin: 0;
 }
 
 /* ---------- Metric cards ---------- */
 div[data-testid="stMetric"] {
-    background: #FFFFFF;
-    border: 1px solid #E6E8EB;
-    border-radius: 10px;
-    padding: 1rem 1.2rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    background-color: #FFFFFF !important;
+    border: 1px solid #E6E8EB !important;
+    border-radius: 10px !important;
+    padding: 1rem 1.2rem !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
 }
-div[data-testid="stMetricLabel"] p { color: #737780 !important; font-size: 0.82rem !important; font-weight: 500 !important; }
-div[data-testid="stMetricValue"] { color: #17191C !important; font-weight: 700 !important; font-size: 1.7rem !important; }
-div[data-testid="stMetricDelta"] { font-size: 0.8rem !important; }
+div[data-testid="stMetricLabel"] p {
+    color: #555A64 !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+}
+div[data-testid="stMetricValue"] {
+    color: #17191C !important;
+    font-weight: 700 !important;
+    font-size: 1.7rem !important;
+}
+div[data-testid="stMetricDelta"] {
+    font-size: 0.8rem !important;
+}
 
 /* ---------- Cards / panels ---------- */
 .ix-card {
-    background: #FFFFFF;
+    background-color: #FFFFFF;
     border: 1px solid #E6E8EB;
     border-radius: 10px;
     padding: 1.2rem 1.4rem;
     margin-bottom: 1rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 .ix-card-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #17191C;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #17191C !important;
     margin: 0 0 0.8rem 0;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -145,13 +294,13 @@ div[data-testid="stMetricDelta"] { font-size: 0.8rem !important; }
     font-weight: 600;
     letter-spacing: 0.02em;
 }
-.ix-badge-high   { background: #FEECEC; color: #B91C1C; border: 1px solid #FECACA; }
-.ix-badge-medium { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
-.ix-badge-low    { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+.ix-badge-high   { background-color: #FEECEC; color: #B91C1C !important; border: 1px solid #FECACA; }
+.ix-badge-medium { background-color: #FEF3C7; color: #92400E !important; border: 1px solid #FDE68A; }
+.ix-badge-low    { background-color: #ECFDF5; color: #065F46 !important; border: 1px solid #A7F3D0; }
 
 /* ---------- Notice preview ---------- */
 .ix-notice {
-    background: #FFFFFF;
+    background-color: #FFFFFF;
     border: 1px solid #E6E8EB;
     border-left: 4px solid #9BCB45;
     border-radius: 8px;
@@ -159,41 +308,15 @@ div[data-testid="stMetricDelta"] { font-size: 0.8rem !important; }
     font-size: 0.88rem;
     line-height: 1.75;
     white-space: pre-wrap;
-    color: #17191C;
+    color: #17191C !important;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     max-height: 520px;
     overflow-y: auto;
 }
 
-/* ---------- Nav links in sidebar ---------- */
-.ix-nav-label {
-    display: block;
-    font-size: 0.87rem;
-    font-weight: 500;
-    color: #9BA1A9;
-    padding: 0.45rem 0.8rem;
-    border-radius: 6px;
-    margin: 0.1rem 0;
-    cursor: pointer;
-    text-decoration: none;
-}
-.ix-nav-active {
-    background: #1E2126;
-    color: #FFFFFF !important;
-}
-.ix-nav-section {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #4A4F57;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 1rem 0.8rem 0.3rem 0.8rem;
-    display: block;
-}
-
 /* ---------- Wordmark ---------- */
 .ix-wordmark {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: #FFFFFF !important;
     letter-spacing: -0.01em;
@@ -202,14 +325,15 @@ div[data-testid="stMetricDelta"] { font-size: 0.8rem !important; }
 
 /* ---------- Tables / dataframes ---------- */
 div[data-testid="stDataFrame"] {
-    border: 1px solid #E6E8EB;
-    border-radius: 8px;
+    background-color: #FFFFFF !important;
+    border: 1px solid #E6E8EB !important;
+    border-radius: 8px !important;
     overflow: hidden;
 }
 
 /* ---------- Buttons ---------- */
 .stDownloadButton button, .stButton > button {
-    background: #17191C !important;
+    background-color: #17191C !important;
     color: #FFFFFF !important;
     border: none !important;
     border-radius: 7px !important;
@@ -219,44 +343,33 @@ div[data-testid="stDataFrame"] {
     letter-spacing: 0.01em;
 }
 .stDownloadButton button:hover, .stButton > button:hover {
-    background: #2A2D31 !important;
+    background-color: #2A2D31 !important;
 }
 
 /* ---------- Tabs ---------- */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 0;
-    background: #FFFFFF;
-    border: 1px solid #E6E8EB;
-    border-radius: 8px;
-    padding: 3px;
+    gap: 4px;
+    background-color: #FFFFFF !important;
+    border: 1px solid #E6E8EB !important;
+    border-radius: 8px !important;
+    padding: 4px;
 }
 .stTabs [data-baseweb="tab"] {
-    border-radius: 6px;
-    color: #737780;
-    font-weight: 500;
-    font-size: 0.87rem;
-    padding: 0.4rem 1rem;
+    border-radius: 6px !important;
+    padding: 0.45rem 1rem !important;
 }
-.stTabs [aria-selected="true"] {
-    background: #17191C !important;
-    color: #FFFFFF !important;
-}
-
-/* ---------- Expanders ---------- */
-.streamlit-expanderHeader {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: #17191C !important;
-}
-
-/* ---------- Info/warning/success boxes ---------- */
-div[data-testid="stAlertContainer"] { border-radius: 8px; font-size: 0.88rem; }
-
-/* ---------- Sidebar radio nav ---------- */
-div[data-testid="stRadio"] > label { display: none; }
-div[data-testid="stRadio"] [data-testid="stMarkdownContainer"] p {
-    font-size: 0.87rem !important;
+.stTabs [data-baseweb="tab"] p, .stTabs [data-baseweb="tab"] span {
+    color: #555A64 !important;
     font-weight: 500 !important;
+    font-size: 0.87rem !important;
+}
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    background-color: #17191C !important;
+}
+.stTabs [data-baseweb="tab"][aria-selected="true"] p,
+.stTabs [data-baseweb="tab"][aria-selected="true"] span {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -527,7 +640,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<div style="font-size:0.75rem;color:#4A4F57;margin-top:2px;margin-bottom:1.2rem;">'
+        '<div style="font-size:0.75rem;color:#9BA1A9;margin-top:2px;margin-bottom:1.2rem;">'
         "Claim Risk Intelligence Platform</div>",
         unsafe_allow_html=True,
     )
@@ -546,13 +659,13 @@ with st.sidebar:
     st.markdown('<span class="ix-nav-section">Data</span>', unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload claims CSV", type=["csv"], label_visibility="visible")
     st.markdown(
-        '<div style="font-size:0.75rem;color:#4A4F57;margin-top:0.5rem;">'
+        '<div style="font-size:0.75rem;color:#9BA1A9;margin-top:0.5rem;">'
         "Use data/insurance_claims.csv to demo.</div>",
         unsafe_allow_html=True,
     )
     st.markdown("---")
     st.markdown(
-        '<div style="font-size:0.72rem;color:#4A4F57;line-height:1.5;">'
+        '<div style="font-size:0.72rem;color:#9BA1A9;line-height:1.5;">'
         "Model: Random Forest (300 trees)<br>"
         "Target: Fraud risk (fraud_reported)<br>"
         "Not an underwriting decision tool.</div>",
